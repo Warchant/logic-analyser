@@ -61,18 +61,10 @@ void MainWindow::on_pushButton_analyse_clicked()
         A->detectVariables();
         A->run();
     }
-    catch (AnalysisError e)
-    {
-        switch(e)
-        {
-        case AnalysisError::EMPTY_INPUT: QMessageBox::information(NULL, "Error", "Empty input."); break;
-        case AnalysisError::WORD: QMessageBox::information(NULL, "Error", "Dont type words. Error at: " + QString::number(e.position)); break;
-        }
-    }
-    catch (QString msg)
+    catch (const QString &msg)
     {
         ui->progressBar->setValue(ui->progressBar->maximum());
-        QMessageBox::information(NULL, "", msg);
+        QMessageBox::information(NULL, " ", msg);
     }
     catch (...)
     {

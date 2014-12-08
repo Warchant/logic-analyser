@@ -23,9 +23,20 @@ void Analyser::detectVariables()
 
 void Analyser::run()
 {
+    if(s.isEmpty())
+        throw QString("Error! Input is empty!");
+
+
+    // user inputs: hello world
+    for(int i=0;i<s.length()-1;i++)
+        if(isVariable(s[i]) && isVariable(s[i+1]))
+            throw QString("Error! Bad input: " + s[i] + s[i+1]);
+
     pb->setValue(0);
     if(pb->isHidden())
         pb->show();
+
+    QTime timer = QTime::currentTime();
 
     const int vlen = variables.length();
     const long long imax = pow(2., vlen);
@@ -40,17 +51,17 @@ void Analyser::run()
         }
         QChar answer = eval(expression);
         if(answer == ZERO)
-            throw QString("Answer is 0");
+            throw QString("Answer is 0. \nTime elapsed: " + QString::number(timer.elapsed()) + " ms");
         else
         {
             int prev = 0;
-            int pbvalue = (double)100 * (double)i / imax;
+            int pbvalue = (double)i / (imax/100);
             if(pbvalue > prev)
                 pb->setValue(pbvalue);
             prev = pbvalue;
         }
     }
-    throw QString("Answer is 1");
+    throw QString("Answer is 1. \nTime elapsed: " + QString::number(timer.elapsed()) + " ms");
 }
 
 void Analyser::setPb(QProgressBar *value)
@@ -100,7 +111,7 @@ inline bool Analyser::isGoodUnary(const QString &s) const
     return false;
 }
 
-QString Analyser::dec2bin(long long i, int num)
+inline QString Analyser::dec2bin(long long i, int num)
 {
     QString b = QString::number(i,2);
     int newlen = num-b.length();
@@ -111,7 +122,7 @@ QString Analyser::dec2bin(long long i, int num)
     return b;
 }
 
-QChar Analyser::eval(QString q)
+inline QChar Analyser::eval(QString q)
 {
     /* brackets
      * not
@@ -121,6 +132,7 @@ QChar Analyser::eval(QString q)
      * imp
      * eq
      */
+
 
     int o;
     while(q.length() > 1)
@@ -133,14 +145,23 @@ QChar Analyser::eval(QString q)
             if( r == -1)
                 throw QString("Syntax error: extra '(' at " + QString::number(l));
 
+            // what if user is dumb or tester? input: ()()()()() or ((((()))))
+            if(r-l == 1)
+            {
+                q.replace(l,2,"");
+                l = q.lastIndexOf(LB);
+                continue;
+            }
+
             if(l>0 && !isOperator(q[l-1]))
                 throw QString("Syntax error: missed operator at " + QString::number(l-1));
-            if(r<q.length() && !isOperator(q[r+1]))
+            if(r+1<q.length() && !isOperator(q[r+1]))
                 throw QString("Syntax error: missed operator at " + QString::number(r+1));
 
             // if seems good
             QString sub = q.mid(l+1,r-1-l);
             q.replace(l, r-l+1, eval(sub));
+            l = q.lastIndexOf(LB);
         }
         int r = q.indexOf(RB);
         if(r != -1)
@@ -153,7 +174,7 @@ QChar Analyser::eval(QString q)
             // sequence of not
             if(q[o+1] == NOT)
             {
-                q.replace(o+1,2,"");
+                q.replace(o,2,"");
                 o = q.indexOf(NOT,o);
                 continue;
             }
@@ -239,7 +260,12 @@ QChar Analyser::eval(QString q)
                 q.replace(o-1,3,ZERO);
             o = q.indexOf(EQ, o);
         }
-
     }
+
+    if(q.isEmpty())
+        throw QString("Error! Input is empty!");
+
     return q[0];
 }
+
+//void Analyser::detectCopy();

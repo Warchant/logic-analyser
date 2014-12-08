@@ -6,13 +6,13 @@
 #include <QDebug>
 #include <QProgressBar>
 #include <math.h>
-#include <QObject>
+#include <QTime>
 
-class Analyser: public QObject{
-    Q_OBJECT
-
+class Analyser{
 public:
     Analyser(const QString value);
+
+    //void detectCopy();
     void detectVariables();
     void run();
 
@@ -27,9 +27,9 @@ private:
     inline bool isGoodBinary(const QString &s) const;
     inline bool isGoodUnary(const QString &s) const;
 
-    QString dec2bin(long long i, int num);
+    inline QString dec2bin(long long i, int num);
 
-    QChar eval(QString q);
+    inline QChar eval(QString q);
 
     QString s;
 
