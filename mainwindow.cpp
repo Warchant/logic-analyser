@@ -63,11 +63,11 @@ void MainWindow::on_pushButton_analyse_clicked()
     catch (const QString &msg)
     {
         ui->progressBar->setValue(ui->progressBar->maximum());
-        QMessageBox::information(NULL, " ", msg);
+        QMessageBox::information(this, " ", msg);
     }
     catch (...)
     {
-        QMessageBox::information(NULL, "Error", "Something bad was happened... Unexpected exception.");
+        QMessageBox::information(this, "Error", "Something bad was happened... Unexpected exception.");
     }
     ui->progressBar->hide();
     delete A;

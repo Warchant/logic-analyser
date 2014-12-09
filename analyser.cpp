@@ -12,6 +12,9 @@ void Analyser::detectVariables()
     variables = "";
     for(int i=0;i<s.length(); ++i)
     {
+        // now variables detecting is case sensitive,
+        // if you want to make case insensitive, use:
+        // if(isVariable(s[i]) && !variables.contains(s[i],Qt::CaseInsensitive))
         if(isVariable(s[i]) && !variables.contains(s[i]))
             variables+=s[i];
     }
@@ -22,12 +25,14 @@ void Analyser::run()
     if(s.isEmpty())
         throw QString("Error! Input is empty!");
 
-    // what if user inputs this: hello world
-    // or even this: 100101001010101
-    for(int i=0;i<s.length()-1; ++i)
-        if((isVariable(s[i]) && isVariable(s[i+1])) ||
-           (isBit(s[i]) && isBit(s[i+1])))
-            throw QString("Error! Bad input: " + s[i] + s[i+1]);
+    // what if user inputs:
+    // 1. letter, number or operator sequence: aadsdasdas or 123123123 or EQEQEQEQ
+    // 2. numbers 2-9 one or more
+    // \\w is a [a-zA-Z0-9_]
+    // \\S is any symbol, except space
+    QRegExp word("(\\w){2,}|([^\\w()]){2,}|([2-9])+");
+    if(word.indexIn(s) != -1)
+        throw QString("Syntax error: " + word.cap(0));
 
     // optimization. Now full equal expressions calculates REALLY fast.
     this->detectEqualExpressions();
@@ -135,19 +140,20 @@ inline QString Analyser::dec2bin(long long i, int num)
 
 inline QChar Analyser::eval(QString q)
 {
-    /* brackets
-     * not
-     * and
-     * or
-     * xor
-     * imp
-     * eq
+    /* priorities:
+     * 1) brackets
+     * 2) not
+     * 3) and
+     * 4) or
+     * 5) xor
+     * 6) imp
+     * 7) eq
      */
 
-
-    int o;
     while(q.length() > 1)
     {
+        int o;
+
         // brackets
         int l = q.lastIndexOf(LB);
         while(l != -1)
@@ -192,7 +198,7 @@ inline QChar Analyser::eval(QString q)
 
             QString sub = q.mid(o,2);
             if(!isGoodUnary(sub))
-                throw QString("Syntax error. Bad NOT operator: " + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[1] == ZERO)
                 q.replace(o,2,ONE);
             else if(sub[1] == ONE)
@@ -208,7 +214,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error. Bad AND operator: " + q[o-1] + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[0] == ONE && sub[2] == ONE)
                 q.replace(o-1,3,ONE);
             else
@@ -222,7 +228,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error. Bad OR operator: " + q[o-1] + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[0] == ZERO && sub[2] == ZERO)
                 q.replace(o-1,3,ZERO);
             else
@@ -236,7 +242,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error. Bad XOR operator: " + q[o-1] + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[0] == sub[2])
                 q.replace(o-1,3,ZERO);
             else
@@ -250,7 +256,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error. Bad IMP operator: " + q[o-1] + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[0] == ONE && sub[2] == ZERO)
                 q.replace(o-1,3,ZERO);
             else
@@ -264,7 +270,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error. Bad EQ operator: " + q[o-1] + q[o] + q[o+1]);
+                throw QString("Syntax error at: " + sub);
             if(sub[0] == sub[2])
                 q.replace(o-1,3,ONE);
             else
@@ -276,7 +282,7 @@ inline QChar Analyser::eval(QString q)
     if(q.isEmpty())
         throw QString("Error! Input is empty!");
     else if(!isBit(q[0]))
-        throw QString("Error! Bad input.");
+        throw QString("Syntax error at: " + q[0]);
 
     return q[0];
 }
@@ -286,12 +292,12 @@ inline QChar Analyser::eval(QString q)
 void Analyser::detectEqualExpressions()
 {
     int p = this->s.indexOf(EQ);
-    if( p != -1) // if it is found
+    if( p != -1 && s.length() > 1) // if it is found
     {
         QStringList l = s.split(EQ);  // split by EQUAL
         int size = l.size();          // A and B ~ A and B ~ A and B -> size = 3
-        int d = l.removeDuplicates(); // number of duplicates
-        if(d == size - 1)
+        int d = l.removeDuplicates(); // d = number of duplicates
+        if(d == size - 1)             // all duplicates
             s = ONE;
         else if(d < size - 1 && d > 0)
             s = l.join(EQ);
