@@ -58,7 +58,6 @@ void MainWindow::on_pushButton_analyse_clicked()
 
     try
     {
-        A->detectVariables();
         A->run();
     }
     catch (const QString &msg)
@@ -68,8 +67,9 @@ void MainWindow::on_pushButton_analyse_clicked()
     }
     catch (...)
     {
-        QMessageBox::information(NULL, "Error", "Something went wrong... Unexpected exception.");
+        QMessageBox::information(NULL, "Error", "Something bad was happened... Unexpected exception.");
     }
     ui->progressBar->hide();
+    delete A;
 }
 

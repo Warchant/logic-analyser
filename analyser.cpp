@@ -2,19 +2,15 @@
 
 Analyser::Analyser(const QString value)
 {
-    this->input = value;
     this->s = value;
-    s.simplified();
-    s.replace(" ", "");
-    s.replace("\t","");
-    s.replace("\n","");
-
+    QRegExp spaces("([ \t\n])");
+    s.replace(spaces,"");
 }
 
 void Analyser::detectVariables()
 {
     variables = "";
-    for(int i=0;i<s.length();i++)
+    for(int i=0;i<s.length(); ++i)
     {
         if(isVariable(s[i]) && !variables.contains(s[i]))
             variables+=s[i];
@@ -26,37 +22,50 @@ void Analyser::run()
     if(s.isEmpty())
         throw QString("Error! Input is empty!");
 
-
-    // user inputs: hello world
-    for(int i=0;i<s.length()-1;i++)
-        if(isVariable(s[i]) && isVariable(s[i+1]))
+    // what if user inputs this: hello world
+    // or even this: 100101001010101
+    for(int i=0;i<s.length()-1; ++i)
+        if((isVariable(s[i]) && isVariable(s[i+1])) ||
+           (isBit(s[i]) && isBit(s[i+1])))
             throw QString("Error! Bad input: " + s[i] + s[i+1]);
 
-    pb->setValue(0);
-    if(pb->isHidden())
-        pb->show();
+    // optimization. Now full equal expressions calculates REALLY fast.
+    this->detectEqualExpressions();
+    this->detectVariables();
 
+    // show progress bar
+    pb->setValue(0);
+    pb->show();
+
+    // start timer
     QTime timer = QTime::currentTime();
 
     const int vlen = variables.length();
     const long long imax = pow(2., vlen);
+
     // main calculation loop
     for(long long i = 0; i<imax; ++i)
     {
         QString expression = s;
-        QString bits = dec2bin(i, vlen);
-        for(int j=0; j<vlen; ++j)
+
+        if(vlen > 0) // optimization
         {
-            expression.replace(variables[j], bits[j]);
+            QString bits = dec2bin(i, vlen);
+            for(int j=0; j<vlen; ++j)
+            {
+                expression.replace(variables[j], bits[j]);
+            }
         }
+
         QChar answer = eval(expression);
+
         if(answer == ZERO)
             throw QString("Answer is 0. \nTime elapsed: " + QString::number(timer.elapsed()) + " ms");
         else
         {
             int prev = 0;
             int pbvalue = (double)i / (imax/100);
-            if(pbvalue > prev)
+            if(pbvalue > prev) // small optimization.
                 pb->setValue(pbvalue);
             prev = pbvalue;
         }
@@ -114,12 +123,14 @@ inline bool Analyser::isGoodUnary(const QString &s) const
 inline QString Analyser::dec2bin(long long i, int num)
 {
     QString b = QString::number(i,2);
-    int newlen = num-b.length();
-    for(int j=0; j<newlen;j++)
-    {
-        b = ZERO + b;
+    if(b.length() == num)
+        return b;
+    else{
+        QString result(num,ZERO);
+        result.append(b);
+        return result;
     }
-    return b;
+
 }
 
 inline QChar Analyser::eval(QString q)
@@ -181,7 +192,7 @@ inline QChar Analyser::eval(QString q)
 
             QString sub = q.mid(o,2);
             if(!isGoodUnary(sub))
-                throw QString("Syntax error: Bad NOT operator at " + QString::number(o));
+                throw QString("Syntax error. Bad NOT operator: " + q[o] + q[o+1]);
             if(sub[1] == ZERO)
                 q.replace(o,2,ONE);
             else if(sub[1] == ONE)
@@ -197,7 +208,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error: Bad AND operator at " + QString::number(o));
+                throw QString("Syntax error. Bad AND operator: " + q[o-1] + q[o] + q[o+1]);
             if(sub[0] == ONE && sub[2] == ONE)
                 q.replace(o-1,3,ONE);
             else
@@ -211,7 +222,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error: Bad OR operator at " + QString::number(o));
+                throw QString("Syntax error. Bad OR operator: " + q[o-1] + q[o] + q[o+1]);
             if(sub[0] == ZERO && sub[2] == ZERO)
                 q.replace(o-1,3,ZERO);
             else
@@ -225,7 +236,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error: Bad XOR operator at " + QString::number(o));
+                throw QString("Syntax error. Bad XOR operator: " + q[o-1] + q[o] + q[o+1]);
             if(sub[0] == sub[2])
                 q.replace(o-1,3,ZERO);
             else
@@ -239,7 +250,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error: Bad IMP operator at " + QString::number(o));
+                throw QString("Syntax error. Bad IMP operator: " + q[o-1] + q[o] + q[o+1]);
             if(sub[0] == ONE && sub[2] == ZERO)
                 q.replace(o-1,3,ZERO);
             else
@@ -253,7 +264,7 @@ inline QChar Analyser::eval(QString q)
         {
             QString sub = q.mid(o-1, 3);
             if(!isGoodBinary(sub))
-                throw QString("Syntax error: Bad EQ operator at " + QString::number(o));
+                throw QString("Syntax error. Bad EQ operator: " + q[o-1] + q[o] + q[o+1]);
             if(sub[0] == sub[2])
                 q.replace(o-1,3,ONE);
             else
@@ -264,8 +275,25 @@ inline QChar Analyser::eval(QString q)
 
     if(q.isEmpty())
         throw QString("Error! Input is empty!");
+    else if(!isBit(q[0]))
+        throw QString("Error! Bad input.");
 
     return q[0];
 }
 
-//void Analyser::detectCopy();
+// what if user inputs two equal expressionsthis:
+// A and B ~ A and B
+void Analyser::detectEqualExpressions()
+{
+    int p = this->s.indexOf(EQ);
+    if( p != -1) // if it is found
+    {
+        QStringList l = s.split(EQ);  // split by EQUAL
+        int size = l.size();          // A and B ~ A and B ~ A and B -> size = 3
+        int d = l.removeDuplicates(); // number of duplicates
+        if(d == size - 1)
+            s = ONE;
+        else if(d < size - 1 && d > 0)
+            s = l.join(EQ);
+    }
+}
