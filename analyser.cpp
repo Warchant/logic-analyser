@@ -26,11 +26,12 @@ void Analyser::run()
         throw QString("Error! Input is empty!");
 
     // what if user inputs:
-    // 1. letter, number or operator sequence: aadsdasdas or 123123123 or EQEQEQEQ
+    // 1. letter, number or operator sequence: aadsdasdas or 123123123 or ~~~ except ~not
     // 2. numbers 2-9 one or more
+    // 3. brackets: )(
     // \\w is a [a-zA-Z0-9_]
-    // \\S is any symbol, except space
-    QRegExp word("(\\w){2,}|([^\\w()]){2,}|([2-9])+");
+    QString exp = QString("(\\w){2,}|([^\\w()]){2,}(?1") + NOT +")|([2-9])+";
+    QRegExp word(exp);
     if(word.indexIn(s) != -1)
         throw QString("Syntax error: " + word.cap(0));
 
@@ -131,7 +132,7 @@ inline QString Analyser::dec2bin(long long i, int num)
     if(b.length() == num)
         return b;
     else{
-        QString result(num,ZERO);
+        QString result(num - b.length(),ZERO);
         result.append(b);
         return result;
     }
@@ -170,9 +171,9 @@ inline QChar Analyser::eval(QString q)
                 continue;
             }
 
-            if(l>0 && !isOperator(q[l-1]))
+            if(l>0 && !(isOperator(q[l-1]) || q[l-1] == LB))
                 throw QString("Syntax error: missed operator at " + QString::number(l-1));
-            if(r+1<q.length() && !isOperator(q[r+1]))
+            if(r+1 < q.length() && !(isOperator(q[r+1]) || q[r+1] == RB) )
                 throw QString("Syntax error: missed operator at " + QString::number(r+1));
 
             // if seems good
