@@ -163,7 +163,7 @@ inline QChar Analyser::eval(QString q)
             if( r == -1)
                 throw QString("Syntax error: extra '(' at " + QString::number(l));
 
-            // what if user is dumb or tester? input: ()()()()() or ((((()))))
+            // what if user is tester? input: ()()()()() or ((((()))))
             if(r-l == 1)
             {
                 q.replace(l,2,"");
